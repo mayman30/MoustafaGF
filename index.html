@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" manifest="cache.appcache">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gaming Freak PS4 Host</title>
+<style>
+:root{--pink:#ff19b8;--purple:#7a22ff;--gold:#ffcf22;--text:#f6f7fb;--muted:#b8b9c7}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%;background:#030106;color:var(--text);font:15px/1.45 "Segoe UI",system-ui,sans-serif;overflow:hidden}
+body{position:relative;min-height:100vh;background:#030106 url("gamingfreak_bg_v3.jpg") center/cover no-repeat fixed}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(2,1,7,.18),rgba(2,1,7,.58)),radial-gradient(circle at 50% 45%,rgba(255,25,184,.08),transparent 52%);z-index:0}
+#brand{position:relative;display:flex;align-items:center;justify-content:center;gap:18px;padding:10px 22px;background:rgba(3,1,6,.78);border-bottom:1px solid rgba(255,25,184,.6);box-shadow:0 0 28px rgba(255,25,184,.2);z-index:2;direction:ltr}
+#brand b{font-size:25px;font-weight:900;letter-spacing:.18em;color:#fff;text-shadow:0 0 14px rgba(255,25,184,.65);order:1}
+#brand img{width:78px;height:60px;object-fit:contain;margin:0;filter:drop-shadow(0 0 14px rgba(255,25,184,.5));order:2}
+#wrap{position:relative;z-index:1;padding:25px 22px 245px;min-height:calc(100vh - 82px);text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#state{font-size:34px;font-weight:900;margin:0 0 10px;text-transform:uppercase;letter-spacing:.045em;text-shadow:0 0 18px rgba(255,25,184,.5)}
+#det{font-size:19px;color:var(--muted);margin:0 0 10px}#det b{color:#fff;font-weight:800}
+#cache{font-size:18px;color:#c2c3d0;margin:0;min-height:24px}#cache.cacheok{color:#7fffc2;text-shadow:0 0 12px rgba(127,255,194,.25)}
+.ok{color:#7fffc2}.bad{color:#ff718b}.warn{color:#ffd36b}
+#brandmark{width:min(46vw,420px);max-height:250px;object-fit:contain;margin:0 auto 20px;filter:drop-shadow(0 0 30px rgba(255,25,184,.42))}
+.gf-card{width:min(860px,92vw);padding:28px 26px;border:1px solid rgba(255,25,184,.52);border-radius:22px;background:rgba(5,3,12,.72);box-shadow:0 0 55px rgba(122,34,255,.2),inset 0 0 30px rgba(255,25,184,.05);backdrop-filter:blur(3px)}
+.gf-kicker{font-size:14px;letter-spacing:.24em;color:#ff63cf;font-weight:800;margin-bottom:11px}.gf-sub{font-size:15px;color:#b8bac8;margin-top:12px}
+#footer{position:fixed;left:0;right:0;bottom:0;width:100%;height:235px;box-sizing:border-box;z-index:10;background:rgba(2,1,5,.98);border-top:3px solid rgba(255,25,184,.65);box-shadow:0 -14px 38px rgba(0,0,0,.72),0 -3px 28px rgba(255,25,184,.16);padding:10px 0 8px;text-align:center;overflow:hidden}
+#footer img{display:block;width:100%;height:160px;object-fit:fill;margin:0 auto 6px}
+#address{font-size:18px;color:#f0f1f5;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 8px #000;padding:0 20px}
+#dev{font-size:15px;color:#a4a5b2;margin-top:4px;letter-spacing:.1em}#dev b{color:#ff58ca}
+@media(max-height:650px){#brand{padding:6px 12px;gap:10px}#brand img{width:54px;height:42px}#brand b{font-size:18px}#wrap{padding-bottom:225px;padding-top:8px}.gf-card{padding:16px}#brandmark{max-height:150px;width:min(42vw,280px)}#footer{height:195px;padding:6px 0 5px}#footer img{width:100%;height:140px;object-fit:fill;margin-bottom:4px}#address{font-size:11px;padding:0 10px}#dev{font-size:10px;margin-top:2px}#state{font-size:26px}#det{font-size:15px}#cache{font-size:14px}}
+</style>
+</head>
+<body>
+<div id="brand"><img src="gamingfreak_logo_transparent.png" alt="Gaming Freak"><b>GAMING FREAK</b></div>
+<div id="wrap"><img id="brandmark" src="gamingfreak_logo_transparent.png" alt="Gaming Freak"><div class="gf-card"><div class="gf-kicker">PLAYSTATION 4 · OFFLINE HOST</div><div id="state">detecting firmware...</div><div id="det"></div><div id="cache"></div><div class="gf-sub">Gaming Freak custom host</div></div></div>
+<div id="footer"><img src="gamingfreak_footer.jpg" alt="Gaming Freak contact and payment methods"><div id="address">Gaming Freak · طريق الأوتوستراد – مدخل زهراء المعادي – برج جولدن جيت – بجوار التوحيد والنور – الدور الرابع – مكتب 402</div><div id="dev">Developed by <b>Moustafa Ayman</b></div></div>
+<script>
+(function () {
+    var stateEl = document.getElementById("state");
+    var detEl = document.getElementById("det");
+    var cacheEl = document.getElementById("cache");
+    function setState(t, c) { stateEl.textContent = t; stateEl.className = c || ""; }
+    function setCache(t, ok) { cacheEl.textContent = t; cacheEl.className = ok ? "cacheok" : ""; }
+    var params = new URLSearchParams(location.search);
+
+    // Firmwares this build has a MEASURED kernel table for. jb.js still runs its
+    // own kernel-table-present gate, so this is UX only -- an unlisted firmware
+    // can still be launched with a tap. KEEP IN SYNC with ps4_offsets.js: add a
+    // fwnum here in the SAME commit that fills that firmware's kernel RVAs.
+    // The PS4 reports its minor as two hex digits in the UA (13.52 -> minor 0x52).
+    var SUPPORTED = { 1302: 1, 1304: 1, 1350: 1, 1352: 1 }; // all measured on hardware
+
+    var key = null, fwnum = null;
+    var m = /PlayStation\s+4[\/ ](\d+)\.(\d+)/.exec(navigator.userAgent);
+    if (m) {
+        var ms = parseInt(m[2], 16).toString(16);
+        if (ms.length < 2) ms = "0" + ms;
+        key = m[1] + "." + ms;
+        fwnum = parseInt(m[1], 10) * 100 + parseInt(ms, 10);
+    }
+
+    var forced = params.get("force") === "1";
+    var supported = forced || (fwnum !== null && SUPPORTED[fwnum] === 1);
+    detEl.innerHTML = "firmware <b>" + (key || "unknown") + "</b>"
+        + (supported ? " &middot; <b>supported</b>"
+                     : " &middot; not in this build's kernel table");
+
+    var target = "jb.html" + location.search;
+    function go() { setState("loading jailbreak...", "warn"); location.replace(target); }
+
+    function waitForTap(msg, action) {
+        setState(msg, "warn");
+        function fire() {
+            window.removeEventListener("click", fire);
+            window.removeEventListener("keydown", fire);
+            action();
+        }
+        window.addEventListener("click", fire);
+        window.addEventListener("keydown", fire);
+    }
+
+    // Off-target consoles are not launched automatically -- one tap still runs
+    // it, so a user-agent quirk on the real 13.52 console can never lock it out.
+    if (!supported) {
+        setState("UNSUPPORTED FIRMWARE", "bad");
+        waitForTap("UNSUPPORTED (" + (key || "unknown") + ") -- press X or tap to run anyway", go);
+        return;
+    }
+
+    var ac = window.applicationCache;
+    if (!ac || !document.documentElement.hasAttribute("manifest")) {
+        go();
+    } else if (!navigator.onLine) {
+        setCache("offline -- from cache", true);
+        go();
+    } else if (ac.status === ac.IDLE) {
+        setCache("cached", true);
+        go();
+    } else if (ac.status === ac.UPDATEREADY) {
+        try { ac.swapCache(); } catch (e) {}
+        setCache("update downloaded", true);
+        waitForTap("UPDATE READY -- press X or tap to reload & run",
+                   function () { location.reload(); });
+    } else {
+        setCache("checking cache...");
+        ac.addEventListener("downloading",
+            function () { setCache("caching for offline (first run)..."); }, false);
+        ac.addEventListener("progress", function (e) {
+            if (e && e.total)
+                setCache("caching " + Math.round((e.loaded / e.total) * 100) + "%");
+        }, false);
+        ac.addEventListener("cached", function () {
+            setCache("cached for offline use", true);
+            waitForTap("CACHED (first run) -- press X or tap to run", go);
+        }, false);
+        ac.addEventListener("updateready", function () {
+            try { ac.swapCache(); } catch (e) {}
+            setCache("update downloaded", true);
+            waitForTap("UPDATE READY -- press X or tap to reload & run",
+                       function () { location.reload(); });
+        }, false);
+        ac.addEventListener("noupdate", function () {
+            setCache("cached -- offline ready", true);
+            go();
+        }, false);
+        ac.addEventListener("error", function () {
+            setCache("cache unavailable");
+            waitForTap("CACHE FAILED -- press X or tap to run anyway", go);
+        }, false);
+        ac.addEventListener("obsolete", function () {
+            setCache("cache obsolete");
+            waitForTap("CACHE OBSOLETE -- press X or tap to run", go);
+        }, false);
+    }
+})();
+</script>
+</body>
+</html>
